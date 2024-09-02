@@ -1,2 +1,38 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<script>
+	let textInput = $state('');
+	let textAnswer = $state('');
+
+	async function fetchStream() {
+		try {
+			const response = await fetch('/api/assistant', {
+				method: 'POST', // Specify the HTTP method
+				headers: {
+					'Content-Type': 'application/json' // Set the content type to JSON
+				},
+				body: JSON.stringify({ input: textInput }) // Include a body with the POST request
+			});
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let done = false;
+
+			while (!done) {
+				const { value, done: readerDone } = await reader.read();
+				done = readerDone;
+				textAnswer += decoder.decode(value, { stream: true });
+			}
+		} catch (error) {
+			console.error('Error fetching stream:', error);
+			textAnswer = 'Error fetching data';
+		}
+	}
+</script>
+
+<div>
+	<p>{textAnswer}</p>
+</div>
+
+<form onsubmit={fetchStream}>
+	<input type="text" bind:value={textInput} />
+	<button type="submit">submit</button>
+</form>
