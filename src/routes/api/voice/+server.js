@@ -1,22 +1,29 @@
 import { openai } from '$lib/openai.js';
-import { Buffer } from 'buffer';
 
 export async function POST({ request }) {
 	try {
 		const { text } = await request.json();
 
-		// Appel à l'API OpenAI pour générer la voix
-		const mp3 = await openai.audio.speech.create({
-			model: 'tts-1',
-			voice: 'nova',
-			input: text
+		const stream = new ReadableStream({
+			async start(controller) {
+				try {
+					const mp3 = await openai.audio.speech.create({
+						model: 'tts-1',
+						voice: 'alloy',
+						input: text
+					});
+
+					const buffer = Buffer.from(await mp3.arrayBuffer());
+					controller.enqueue(buffer);
+					controller.close();
+				} catch (error) {
+					console.error('Error during TTS:', error);
+					controller.error(error); // Signaler l'erreur et fermer correctement
+				}
+			}
 		});
 
-		// Convertir les données reçues en Buffer
-		const buffer = Buffer.from(await mp3.arrayBuffer());
-
-		// Retourner les données audio au client
-		return new Response(buffer, {
+		return new Response(stream, {
 			headers: {
 				'Content-Type': 'audio/mpeg'
 			}
